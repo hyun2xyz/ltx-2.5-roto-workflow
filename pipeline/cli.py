@@ -115,8 +115,10 @@ def main():
     for action in ('submit','status','collect','wait','release'):
         p=sub.add_parser(action);p.add_argument('--run',required=True)
         if action=='wait':p.add_argument('--timeout',type=int,default=21600)
-    p=sub.add_parser('refine');p.add_argument('--run',required=True);p.add_argument('--out',required=True)
+    p=sub.add_parser('refine');p.add_argument('--run',required=True);p.add_argument('--out',required=True);p.add_argument('--execution',choices=['isolated','batch'],default='isolated')
+    p=sub.add_parser('export-rgba');p.add_argument('--producer',required=True);p.add_argument('--out',required=True);p.add_argument('--format',choices=['exr','png8'],default='exr')
     p=sub.add_parser('_worker');p.add_argument('phase',choices=['tile','foreground','pack']);p.add_argument('--out',required=True);p.add_argument('--local',type=int,required=True)
+    p=sub.add_parser('_batch_worker');p.add_argument('phase',choices=['tile','foreground','pack']);p.add_argument('--out',required=True)
     args=parser.parse_args()
     if args.action=='prepare':result=prepare(config(args.config),args.source,args.out)
     elif args.action=='conditioning-prepare':
@@ -130,7 +132,13 @@ def main():
         result=release(args.run)
     elif args.action=='refine':
         from .refine import run_refine
-        result=run_refine(args.run,args.out)
+        result=run_refine(args.run,args.out,args.execution)
+    elif args.action=='export-rgba':
+        from .export import export_rgba
+        result=export_rgba(args.producer,args.out,args.format)
+    elif args.action=='_batch_worker':
+        from .refine import batch_worker
+        result=batch_worker(args.phase,args.out)
     elif args.action=='_worker':
         from .refine import worker
         result=worker(args.phase,args.out,args.local)

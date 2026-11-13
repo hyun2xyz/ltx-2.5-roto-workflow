@@ -1,6 +1,6 @@
 # Editable After Effects handoff
 
-The checked profile is **4096×2160,25fps,65frames**. It preserves original RGB8, mapped raw LTX F32 prior, refined F32 alpha and reconstructed F32 foreground separately. This is original4K ViTMatte refinement of an HD LTX prior, not native4K LTX inference.
+After Effects is optional: use this path when an editable project or native AE proof is needed. Direct Python foreground-plus-alpha output skips the AE handoff; it does not reduce model/refinement time. The checked AE profile is **4096×2160,25fps,65frames**. It preserves original RGB8, mapped raw LTX F32 prior, refined F32 alpha and reconstructed F32 foreground separately. This is original4K ViTMatte refinement of an HD LTX prior, not native4K LTX inference.
 
 `ae/` contains project/queue JSX, input validation, a native probe and the100-export precision checker. It does not require a private orchestration harness and never starts an app/render automatically. Models, media, AEPs and runtime receipts are external and must stay out of Git. Third-party implementation code is not vendored; Python dependencies are listed in `ae/requirements.txt`.
 
@@ -58,8 +58,24 @@ Collection identifies each clean frame by the original F32 A bit hash; ambiguous
 
 V2 checks all65 clean A and associatedRGB against **original input F×A**. It checks sourceRGB8 byte restoration, opaqueF import, raw/refined alpha, two source roto branches and gray composite on five samples only. It records literal F32 bit-exactness separately from maxerror/tolerance. Soft clean pixels detect A². Recompose native output as `associatedRGB + BG*(1-A)`, without multiplying native RGB by A again.
 
+## Repeat-shot review5
+
+For another shot using the same approved model, AE version and input/output color settings, keep the complete260-file input validation and builder layer/clock readback. Confirm foreground input Preserve RGB on the newly imported footage and save the base AEP. Then use the smaller queue instead of probe/full100:
+
+```text
+python -B ae/queue_tools.py --settings ../runs/ae-settings.json make-queue --phase review
+```
+
+Run its generated JSX from the saved clean base AEP with an empty render queue. It protects unexpected/unsaved user projects, checks the two clean layers and one native ALPHA matte, and prepares only local0/8/16/32/64, each in a unique empty directory. It saves a separate render AEP without starting a render. Render externally as above, then verify the actual files:
+
+```text
+python -B ae/queue_tools.py --settings ../runs/ae-settings.json verify-review --queue-receipt ACTUAL_HOST_QUEUE_RECEIPT --receipt NEW_REVIEW5_PROOF
+```
+
+`verify-review` requires the exact five keys and real queue time spans, FLOAT32/ZIP RGBA headers, unchanged base-AEP/input-validation SHA bindings and selected original input SHAs. It compares A independently and associated RGB directly with original F×A. Its report records literal bit-exactness separately from tolerance and explicitly states **five samples only, not all65 native frames**. It does not certify opaqueF or sourceRGB8 native preservation. Review all65 frames for temporal/visual quality separately; no breakdown or OBS capture is required. New model, AE version or color settings require the existing probe/full100 path. Keep previous full proofs unchanged.
+
 ## Validation scope
 
 The completed production run used AE26.5x89:100 actual4K ZIP/FLOAT32 exports; all65 clean A and original F×A were bit-exact with maxerror0. OriginalRGB8 and opaqueF native preservation were five-sample checks. Temporal visual PASS used all-frame contacts and selected1:1 hair/boundary patches; it is not a ground-truth-perfect-matte claim.
 
-These repository copies have portable path/config adapters and a safer unique-directory queue. Their validation is syntax/help, clock and focused guard regression checks. They were **not re-rendered in a new native AE run** during packaging. See `ae/validation-summary.json`. Final visual approval remains separate from technical precision checks.
+These repository copies have portable path/config adapters and a safer unique-directory queue. Their validation is syntax/help, clock and focused guard regression checks. Review5 adds mock/numeric regression coverage only; it has **not been executed in a new native AE run**. No AE render was added during packaging. See `ae/validation-summary.json` for the earlier full100 scope. Final visual approval remains separate from technical precision checks.

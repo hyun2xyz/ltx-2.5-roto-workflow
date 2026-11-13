@@ -55,6 +55,8 @@ python -m pipeline release --run runs/shot
 python -m pipeline refine --run runs/shot --out runs/refined4k
 ```
 
+For model/process reuse, use the opt-in `refine --execution batch` with the same arguments. It runs one GPU process with one model load, then one CPU foreground process, then one packing process. Frames and tiles remain sequential at unchanged precision. Completed assets require matching input/file hashes; intermediate reuse additionally requires input/config/code-bound receipts and matching NPY file/pixel hashes. Partial or changed files stop the job and remain preserved. Default `isolated` retains the original per-frame process behavior. See [next-shot timing and direct output](next-shot.md) for measured scope.
+
 `prepare` runs CPU FFmpeg and local API GET/schema checks only. It extracts original4K RGB8 code values and creates the matched1920×1088 lossless-RGB reference. It writes an absolute local VHS reference path plus API/UI JSON. It does not POST. Default `start_frame=75`; zero-based local0..64 maps to source75..139 and file00001..00065, at25fps,2.6seconds. No optical flow creates intermediate matte frames.
 
 The15-node graph uses empty prompt, LoRA/guide strength1, CFG1, eight explicit sigma intervals, nonancestral Euler, spatially full1920×1088 and temporal-only Fusion33 with a matching streamed33 guide/CPU canvas. This differs from the earlier17/33-frame ancestral pilot. Decode uses DiffVAE tile512/overlap64. The native exporter uses flattened `format.bit_depth=32-bit float` and `format.input_color_space=linear` keys. That setting preserves the model's numeric matte output; it is not a scene-RGB color conversion.
@@ -81,6 +83,8 @@ The CPU step uses [PyMatting1.1.16 `estimate_foreground_ml`](https://pymatting.g
 EXR writes are read back by channel name and literal F32 bits are checked. Mixed HALF/FLOAT EXRs are rejected before `read_image(FLOAT)` can silently promote HALF channels. Keep all65 source/F/A/prior assets and the raw LTX EXRs. Technical completion alone is not temporal visual approval: inspect all-frame motion and1:1 hair on black/gray/white/contrast backgrounds.
 
 See `docs/after-effects.md` for the independently packaged native host workflow. Foreground has no A and receives the external alpha once. Actual AE associated/black output is composited as `RGB + BG*(1-A)`; do not multiply its RGB by A again. Preserve RGB interpretation of coded EXR inputs must be proved before native render, and queue outputs need unique directories because native numbering can restart at0.
+
+For a transparent file sequence without AE, run `python -m pipeline export-rgba --producer runs/refined4k --out runs/rgba --format exr` using the media environment with NumPy/OpenImageIO. It validates input SHAs, channel types, dimensions and contiguous frame clocks before joining restored RGB with the existing coverage A. This is straight RGBA, not associated RGB: do not multiply F by A in the stored file. EXR remains coded BT709 and needs an explicit straight-alpha/data-preserving interpretation in consumers. `--format png8` produces rounded/clamped 8-bit RGBA for review, not an F32 master. Both paths refuse existing output directories and write a clock/hash receipt. Neither starts inference or AE.
 
 ## Packaging verification boundary
 

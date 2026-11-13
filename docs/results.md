@@ -44,6 +44,8 @@ AE 패키징 단계에서는 Python AST, 3개 CLI help, standalone JSX 구문 �
 
 ## 최종 브레이크다운
 
+후속 최적화에서는 두 프레임만 실제 GPU로 재처리하여 기존 A/F의 비트 일치를 확인했고, 이미 완성된 전체 65프레임을 Python에서 straight RGBA로 결합·저장·재검증하는 데 69.453초가 걸렸습니다. 이 시간은 새 알파 추론을 포함하지 않습니다. [후속 검증 요약](optimization-validation.json)과 [다음 영상 절차](next-shot.md)를 참고하세요. AE review5는 새로운 실제 AE 실행 없이 회귀 검사만 수행했습니다.
+
 로컬 전달본 `LTX_4K_Hair_Breakdown_1080x1350.mp4`는 1080×1350, 30fps, 756프레임, 25.2초이며 전체 decode·clock·BT.709 matrix/primaries/transfer·TV range·레이아웃 검사를 통과했습니다. 실제 인코딩된 intro, ComfyUI capture, 결과 프레임과 전환 주변을 확인했습니다.
 
 처음 출력에서 누락된 primaries/transfer 태그는 H.264 metadata stream-copy로 보완했습니다. 전후 756개 decoded frame hash와 timestamp가 일치하여 픽셀 재인코딩이 없음을 확인했습니다. 최종 MP4 SHA-256은 `fa284b3c657a3455b8139e31c82c9c7672e34ef0835bc42f0e082c56de47b3dd`입니다. 영상은 저장소에 포함하지 않으며 네이티브 F32 master를 대신하지 않습니다.

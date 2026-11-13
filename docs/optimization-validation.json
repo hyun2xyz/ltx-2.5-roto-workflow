@@ -1,0 +1,41 @@
+{
+  "date": "2026-11-14",
+  "hardware": "RTX 4070 Ti SUPER 16GB, 32GB RAM, directly connected external SSD",
+  "focused_regressions": {"passed": 30, "failed": 0},
+  "batch_refinement": {
+    "scope": "Two original 4K frames only; not a full65 GPU replay",
+    "local_frames": [8, 32],
+    "source_frames": [83, 107],
+    "tile_seconds": 36.407370700035244,
+    "one_time_context_setup_seconds": 21.81336990010459,
+    "model_load_count": 1,
+    "foreground_seconds": 13.573702299967408,
+    "pack_seconds": 3.0377089000539854,
+    "A_bit_exact_both": true,
+    "F_bit_exact_both": true,
+    "A_max_error": 0,
+    "F_max_error": 0,
+    "receipt_sha256": "b646975c9cfce1b990e4d832fce2a19cac1a103f3888c397c57bf12546e343f6"
+  },
+  "direct_python_export": {
+    "scope": "All65 already completed frames; inference excluded",
+    "elapsed_seconds": 69.45303510001395,
+    "frame_count": 65,
+    "width": 4096,
+    "height": 2160,
+    "fps": 25,
+    "source_frames": [75, 139],
+    "output_bytes": 7330618091,
+    "format": "ZIP FLOAT32 EXR, straight RGBA, BT709 coded RGB",
+    "all_frames_F32_write_readback_bit_exact": true,
+    "AE_used": false,
+    "inference_started": false
+  },
+  "AE_review5": {
+    "regressions_passed": 12,
+    "new_native_AE_run_performed": false,
+    "sampled_scope_only": true
+  },
+  "next_shot_estimate_minutes": [35, 45],
+  "estimate_status": "Provisional, not a measured optimized full65 end-to-end run"
+}

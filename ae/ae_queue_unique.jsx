@@ -19,6 +19,33 @@ var CONFIG = __CONFIG_JSON__;
         return "{"+parts.join(",")+"}";
     }
     function normalized(path) { return String(path).replace(/\\/g,"/").toLowerCase(); }
+    function near(actual, expected) { return typeof actual==="number"&&isFinite(actual)&&Math.abs(actual-expected)<=0.000000001; }
+    function reviewLayers(comp) {
+        need(comp.numLayers===2,"REVIEW_EXACT_TWO_LAYERS_REQUIRED");
+        var matte=comp.layer(1),rgb=comp.layer(2),layers=[rgb,matte],evidence=[];
+        need(rgb.source!==null&&matte.source!==null&&rgb.source.mainSource.hasAlpha===false
+             &&matte.source.mainSource.hasAlpha===true,"REVIEW_RGB_NO_A_AND_REAL_MATTE_REQUIRED");
+        need(rgb.hasTrackMatte===true&&rgb.trackMatteType===TrackMatteType.ALPHA
+             &&rgb.trackMatteLayer!==null&&rgb.trackMatteLayer.id===matte.id,"REVIEW_ONE_NATIVE_ALPHA_REQUIRED");
+        need(rgb.enabled===true&&matte.enabled===false,"REVIEW_LAYER_ENABLE_STATE_CHANGED");
+        need(matte.source.mainSource.alphaMode===AlphaMode.STRAIGHT&&matte.source.mainSource.invertAlpha===false,"REVIEW_STRAIGHT_MATTE_REQUIRED");
+        for(var n=0;n<layers.length;n+=1){
+            var layer=layers[n],source=layer.source,transform=layer.property("ADBE Transform Group");
+            var position=transform.property("ADBE Position").value,anchor=transform.property("ADBE Anchor Point").value,scale=transform.property("ADBE Scale").value;
+            need(source.width===4096&&source.height===2160&&near(source.pixelAspect,1)&&near(source.frameRate,25)
+                 &&near(source.duration,65/25)&&source.mainSource.isStill===false,"REVIEW_SEQUENCE_CLOCK_CHANGED");
+            need(layer.threeDLayer===false&&layer.parent===null&&near(position[0],2048)&&near(position[1],1080)
+                 &&near(anchor[0],2048)&&near(anchor[1],1080)&&near(scale[0],100)&&near(scale[1],100)
+                 &&near(transform.property("ADBE Rotate Z").value,0)&&near(transform.property("ADBE Opacity").value,100),"REVIEW_LAYER_GEOMETRY_CHANGED");
+            need(near(layer.startTime,0)&&near(layer.inPoint,0)&&near(layer.outPoint,65/25)&&near(layer.stretch,100)
+                 &&layer.timeRemapEnabled===false&&layer.frameBlending===false&&layer.motionBlur===false,"REVIEW_LAYER_CLOCK_CHANGED");
+            need(layer.property("ADBE Effect Parade").numProperties===0&&layer.property("ADBE Mask Parade").numProperties===0
+                 &&layer.blendingMode===BlendingMode.NORMAL,"REVIEW_EXTRA_ALPHA_OR_RGB_PROCESSING");
+            evidence.push({layer_id:layer.id,source_id:source.id,has_alpha:source.mainSource.hasAlpha,
+                frame_rate:source.frameRate,duration:source.duration,start:layer.startTime,in_point:layer.inPoint,out_point:layer.outPoint});
+        }
+        return {rgb_and_matte:evidence,track_matte_layer_id:rgb.trackMatteLayer.id,track_matte_type:"ALPHA",applied_once:true};
+    }
     var result={ok:false,rendered:false,implementation:"4k-native100-queue-v3-span-start",phase:CONFIG.phase,items:[],expected_output_files:[]};
     var receipt=new File(CONFIG.receipt_path),undoOpen=false;
     need(!receipt.exists&&receipt.parent.exists,"NEW_RECEIPT_REQUIRED");
@@ -32,17 +59,34 @@ var CONFIG = __CONFIG_JSON__;
         need(project.bitsPerChannel===32&&(project.workingSpace===""||project.workingSpace==="None")
              &&project.linearBlending===false&&project.linearizeWorkingSpace===false,"NATIVE_COLOR_CONTRACT_CHANGED");
         need(project.renderQueue.numItems===0,"EXISTING_QUEUE_PRESERVED");
-        need(CONFIG.phase==="probe"||CONFIG.phase==="full","EXPLICIT_PHASE_REQUIRED");
+        need(CONFIG.phase==="probe"||CONFIG.phase==="review"||CONFIG.phase==="full","EXPLICIT_PHASE_REQUIRED");
         if(CONFIG.phase==="full"){need(CONFIG.probe_numeric_passed===true&&CONFIG.probe_A_error<=0.0000002384185791015625&&CONFIG.probe_RGB_error<=0.0000002384185791015625,"ACTUAL_ORIGINAL_F_A_INPUT_PROBE_REQUIRED");}
         var targetProject=new File(CONFIG.render_project_path);
         need(!targetProject.exists&&targetProject.parent.exists,"NEW_RENDER_PROJECT_REQUIRED");
         var specs=CONFIG.specs;
+        if(CONFIG.phase==="review"){
+            need(CONFIG.foreground_input_preserve_rgb_confirmed===true,"ACTUAL_INPUT_PRESERVE_RGB_CONFIRMATION_REQUIRED");
+            need(specs.length===5&&CONFIG.expected_exports===5,"REVIEW_EXACT_FIVE_ITEMS_REQUIRED");
+            var requiredKeys={"0":true,"8":true,"16":true,"32":true,"64":true},reviewSeen={};
+            for(var k=0;k<specs.length;k+=1){
+                var rspec=specs[k],rkey=String(rspec.first);
+                need(requiredKeys[rkey]===true&&!reviewSeen[rkey]&&rspec.comp==="ROTO_CLEAN_REFINED_4K"
+                     &&rspec.branch==="clean"&&rspec.count===1,"REVIEW_KEY_OR_BRANCH_MISMATCH");
+                reviewSeen[rkey]=true;
+            }
+            result.base_project_sha256=CONFIG.base_project_sha256;
+            result.input_validation_sha256=CONFIG.input_validation_sha256;
+            result.foreground_input_preserve_rgb_confirmed=true;
+        }
         var seen={},total=0;
         app.beginUndoGroup("Native4K EXR queue - no rendering");undoOpen=true;
         for(var s=0;s<specs.length;s+=1){
             var spec=specs[s],comp=null;
             for(var i=1;i<=project.numItems;i+=1){if(project.item(i) instanceof CompItem&&project.item(i).name===spec.comp){need(comp===null,"DUPLICATE_COMP_NAME");comp=project.item(i);}}
             need(comp!==null&&comp.width===4096&&comp.height===2160&&comp.frameRate===25&&Math.round(comp.duration*25)===65,"NATIVE4K_CLOCK_OR_COMP_MISMATCH");
+            if(CONFIG.phase==="review"&&!result.review_layer_clock_readback){
+                result.review_layers=reviewLayers(comp);result.review_layer_clock_readback=true;
+            }
             var target=new File(CONFIG.render_root+"/"+spec.folder+"/"+spec.prefix+"_[#####].exr");need(target.parent.exists,"OUTPUT_DIRECTORY_REQUIRED");
             need(!seen[normalized(target.parent.fsName)]&&target.parent.getFiles("*.exr").length===0,"UNIQUE_EMPTY_DIRECTORY_PER_QUEUE_ITEM_REQUIRED");
             seen[normalized(target.parent.fsName)]=true;total+=spec.count;

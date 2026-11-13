@@ -1,5 +1,6 @@
 """The tested native4K28-tile F32/r48 method, split into GPU and CPU workers."""
 from pathlib import Path
+from contextlib import contextmanager
 import gc, json, os, shutil, sys, time
 from .common import REPO, command, read_json, save_json, sha
 from .media import bit_exact, make_trimap, pixel_sha, read_exr, require_f32, tile_geometry, white_alpha, write_exr
@@ -7,13 +8,15 @@ from .media import bit_exact, make_trimap, pixel_sha, read_exr, require_f32, til
 METHOD = 'LTX_BF16_FHD_PRIOR__VITMATTE_BASE_F32_4K_R48__ML_CODED_V1'
 ML = dict(regularization=1e-5, n_small_iterations=10, n_big_iterations=2,
           small_size=32, return_background=False, gradient_weight=1.)
+CODE_SHA = sha(Path(__file__))
 
 def verify_inputs(row):
     for item in row['inputs'].values():
         if sha(item['path']) != item['sha256']:
             raise ValueError('Frozen input SHA changed')
 
-def tiled_frame(out, row, cfg):
+def load_tiled_context(cfg):
+    started=time.perf_counter()
     import collections
     import numpy as np
     import torch
@@ -43,11 +46,20 @@ def tiled_frame(out, row, cfg):
     model.load_state_dict(state,strict=True);del state;gc.collect();model.to('cuda',dtype=torch.float32)
     if any(p.dtype!=torch.float32 for p in model.parameters()):raise ValueError('Model parameter precision changed')
     processor=VitMatteImageProcessor.from_pretrained(model_dir,local_files_only=True)
+    return {'model':model,'processor':processor,'checkpoint_dtypes':weight_dtypes,
+            'geometry':tile_geometry(),'setup_seconds':time.perf_counter()-started}
+
+def tiled_frame(out, row, cfg, context=None):
+    import numpy as np
+    import torch
+    from PIL import Image
+    context=context if context is not None else load_tiled_context(cfg)
+    model=context['model'];processor=context['processor'];weight_dtypes=context['checkpoint_dtypes']
     rgb=np.asarray(Image.open(row['inputs']['source']['path']).convert('RGB'))
     prior=read_exr(row['inputs']['raw_prior']['path'])['A']
     if rgb.shape!=(2160,4096,3) or prior.shape!=(2160,4096):raise ValueError('Native4K grid required')
     trimap=make_trimap(prior);Image.fromarray(trimap).save(out/'trimap.png')
-    xs,ys,weight,norm=tile_geometry();accum=np.zeros_like(norm);coverage=np.zeros(norm.shape,np.uint8);metrics=[]
+    xs,ys,weight,norm=context['geometry'];accum=np.zeros_like(norm);coverage=np.zeros(norm.shape,np.uint8);metrics=[]
     for y in ys:
         for x in xs:
             image=Image.fromarray(np.ascontiguousarray(rgb[y:y+1024,x:x+1024]))
@@ -120,14 +132,150 @@ def worker(phase,root,local):
     verify_inputs(row)
     return {'phase':phase,'local_index':local,'status':'SUCCEEDED'}
 
-def run_refine(run,root):
+@contextmanager
+def exclusive_lock(path):
+    path=Path(path)
+    try:
+        handle=path.open('x',encoding='utf-8')
+    except FileExistsError:
+        raise RuntimeError('Refiner lock already exists; inspect the recorded PID before any manual recovery: '+str(path))
+    try:
+        with handle:
+            json.dump({'pid':os.getpid(),'created_at':time.time()},handle);handle.flush()
+            yield
+    finally:
+        path.unlink()
+
+STAGE_FILES={'tile':('alpha.npy','inference.json','trimap.png'),
+             'foreground':('foreground.npy','foreground.json')}
+
+def stage_marker(out,phase):return Path(out)/('batch-'+phase+'-receipt.json')
+
+def frame_binding(root,row,phase):
+    binding={'method':METHOD,'plan_sha256':sha(Path(root)/'plan.json'),'implementation_sha256':CODE_SHA,
+             'model_provenance_sha256':sha(REPO/'config/model-provenance.json'),
+             'local_index':row['local_index'],'source_frame_index':row['source_frame_index'],
+             'inputs':row['inputs'],'ML_parameters':ML}
+    if phase=='foreground':
+        binding['upstream_tile_receipt_sha256']=sha(stage_marker(Path(root)/f"working/local{row['local_index']:02d}",'tile'))
+    return binding
+
+def npy_evidence(path):
+    import numpy as np
+    values=np.load(path,allow_pickle=False);require_f32(values)
+    return {'sha256':sha(path),'pixel_sha256':pixel_sha(values),'shape':list(values.shape),'dtype':'float32'}
+
+def stage_valid(root,out,row,phase):
+    marker=stage_marker(out,phase);files=STAGE_FILES[phase]
+    if not marker.exists():
+        if any((out/name).exists() for name in files):
+            raise RuntimeError('Partial '+phase+' files have no input-bound receipt; preserved, not overwritten: '+str(out))
+        return False
+    receipt=read_json(marker)
+    if receipt.get('phase')!=phase or receipt.get('binding')!=frame_binding(root,row,phase) or set(receipt.get('files',{}))!=set(files):
+        raise ValueError('Stage input/config/implementation binding changed: '+str(marker))
+    for name in files:
+        path=out/name;expected=receipt['files'][name]
+        actual=npy_evidence(path) if path.suffix=='.npy' else {'sha256':sha(path)}
+        if actual!=expected:raise ValueError('Intermediate file/data changed: '+str(path))
+    return True
+
+def save_stage_receipt(root,out,row,phase):
+    marker=stage_marker(out,phase)
+    if marker.exists():raise FileExistsError('Stage receipt already exists; refusing overwrite')
+    files={name:npy_evidence(out/name) if name.endswith('.npy') else {'sha256':sha(out/name)} for name in STAGE_FILES[phase]}
+    save_json(marker,{'phase':phase,'binding':frame_binding(root,row,phase),'files':files})
+
+def completed_frame(root,row):
+    receipt=Path(root)/f"receipts/frame_{row['local_index']+1:05d}.json"
+    if not receipt.exists():return None
+    completed=read_json(receipt)
+    if completed.get('method')!=METHOD or any(completed.get(k)!=row[k] for k in ('local_index','source_frame_index','file_index','time_seconds')):
+        raise ValueError('Existing complete frame identity differs')
+    if any(completed['inputs'][k]['sha256']!=row['inputs'][k]['sha256'] for k in ('source','raw_prior')):
+        raise ValueError('Existing complete frame was made from different inputs')
+    verify_inputs(row);verify_inputs(completed)
+    return completed
+
+def reject_partial_pack(root,row):
+    i=row['local_index']+1
+    paths=[Path(root)/p for p in [f'assets/source/source_{i:05d}.png',f'assets/raw_prior_rgba_float32/alpha_{i:05d}.exr',
+                                 f'assets/alpha_rgba_float32/alpha_{i:05d}.exr',f'assets/foreground_rgb_float32/foreground_{i:05d}.exr']]
+    if any(p.exists() for p in paths):
+        raise RuntimeError('Incomplete packed assets without a complete frame receipt; preserved, not overwritten')
+
+def batch_worker(phase,root):
+    """One phase/process. Subset plans are allowed for bounded parity benchmarks."""
+    if phase not in ('tile','foreground','pack'):raise ValueError('Unknown batch phase')
+    root=Path(root).resolve();started=time.perf_counter();plan=read_json(root/'plan.json');frames=plan['frames']
+    if plan['method']!=METHOD or not 1<=len(frames)<=65 or len({r['local_index'] for r in frames})!=len(frames):
+        raise ValueError('Invalid immutable batch plan')
+    with exclusive_lock(root/'.batch-worker.lock'):
+        pending=[];reused=0
+        for row in frames:
+            verify_inputs(row)
+            if completed_frame(root,row) is not None:reused+=1;continue
+            out=root/f"working/local{row['local_index']:02d}";out.mkdir(parents=True,exist_ok=True)
+            tile_ok=stage_valid(root,out,row,'tile')
+            if not tile_ok and (stage_marker(out,'foreground').exists() or any((out/f).exists() for f in STAGE_FILES['foreground'])):
+                raise ValueError('Foreground exists without a verified tile stage')
+            foreground_ok=stage_valid(root,out,row,'foreground') if tile_ok else False
+            reject_partial_pack(root,row)
+            if phase=='tile':
+                if tile_ok:reused+=1;continue
+            elif not tile_ok:raise RuntimeError('Verified tile stage is required before '+phase)
+            elif phase=='foreground':
+                if foreground_ok:reused+=1;continue
+            elif not foreground_ok:raise RuntimeError('Verified foreground stage is required before pack')
+            pending.append((out,row))
+        # Load exactly once, and only when there is actual GPU work remaining.
+        context=load_tiled_context(plan['config']) if phase=='tile' and pending else None
+        setup_seconds=context.get('setup_seconds',0.) if context is not None else 0.
+        for out,row in pending:
+            verify_inputs(row)
+            if phase=='tile':tiled_frame(out,row,plan['config'],context=context)
+            elif phase=='foreground':foreground_frame(out,row)
+            else:pack_frame(root,out,row)
+            verify_inputs(row)
+            if phase in STAGE_FILES:save_stage_receipt(root,out,row,phase)
+            print(json.dumps({'batch_phase':phase,'local_index':row['local_index'],'status':'SUCCEEDED'}),flush=True)
+        return {'phase':phase,'processed':len(pending),'reused':reused,'model_load_count':int(context is not None),
+                'context_setup_seconds':setup_seconds,'seconds':time.perf_counter()-started}
+
+def run_refine(run,root,execution='isolated'):
+    if execution not in ('isolated','batch'):raise ValueError('Unknown refiner execution mode')
+    root=Path(root).resolve();root.mkdir(parents=True,exist_ok=True)
+    with exclusive_lock(root/'.refine.lock'):
+        return run_refine_locked(run,root,execution)
+
+def run_refine_locked(run,root,execution):
     run=Path(run).resolve();root=Path(root).resolve();prior=read_json(run/'prior-ledger.json');cfg=read_json(run/'config.json')
     if (prior['width'],prior['height'],prior['frame_count'],prior['fps'])!=(4096,2160,65,25):raise ValueError('Validated65/native4K/25fps ledger required')
     plan={'method':METHOD,'config':cfg,'frames':prior['frames'],'prior_ledger_sha256':sha(run/'prior-ledger.json')}
-    if root.exists():
+    if (root/'plan.json').exists():
         if read_json(root/'plan.json')!=plan:raise ValueError('Existing run differs; preserve and use a new output directory')
     else:
-        root.mkdir(parents=True);save_json(root/'plan.json',plan)
+        if any(p.name!='.refine.lock' for p in root.iterdir()):raise ValueError('Existing output has no matching immutable plan')
+        save_json(root/'plan.json',plan)
+    if execution=='batch':
+        for phase,exe in [('tile',cfg['gpu_python']),('foreground',cfg['cpu_python']),('pack',cfg['gpu_python'])]:
+            with (root/f'batch-{phase}.log').open('ab') as stream:
+                command([exe,'-B','-m','pipeline','_batch_worker',phase,'--out',root],cwd=REPO,
+                        stdout=stream,stderr=stream,timeout=1200+60*len(prior['frames']))
+        rows=[completed_frame(root,row) for row in prior['frames']]
+        if any(row is None for row in rows):raise RuntimeError('Batch did not produce every complete typed frame')
+    else:
+        rows=run_isolated_frames(root,prior,cfg)
+    ledger={'method':METHOD,'execution':execution,'width':4096,'height':2160,'fps':25,'frame_count':65,'frames':rows,
+            'RGB':'original full-range BT709 code values; ML straight RGB3/noA; no extra EOTF',
+            'alpha':'derivedF32 linear coverage, whiteRGBA; raw mapped prior preserved separately',
+            'frame_clock':'local0..64 = source75..139 by default; source index is ledger-authoritative',
+            'visual_approval':False}
+    save_json(root/'frame-ledger.json',ledger)
+    save_json(root/'completion.json',{'status':'ALL65_F32_TYPED_EXPORTS_COMPLETE_VISUAL_PENDING','files':260,'ledger_sha256':sha(root/'frame-ledger.json')})
+    return {'status':'COMPLETE_REQUIRES_TEMPORAL_VISUAL_QA','execution':execution,'ledger':str(root/'frame-ledger.json')}
+
+def run_isolated_frames(root,prior,cfg):
     rows=[]
     for row in prior['frames']:
         verify_inputs(row);local=row['local_index'];receipt=root/f'receipts/frame_{local+1:05d}.json'
@@ -141,11 +289,4 @@ def run_refine(run,root):
                 command([exe,'-B','-m','pipeline','_worker',phase,'--out',root,'--local',str(local)],cwd=REPO,
                         stdout=stream,stderr=stream,timeout=1200)
         rows.append(read_json(receipt));print(json.dumps({'completed_frame':local+1,'total':65}),flush=True)
-    ledger={'method':METHOD,'width':4096,'height':2160,'fps':25,'frame_count':65,'frames':rows,
-            'RGB':'original full-range BT709 code values; ML straight RGB3/noA; no extra EOTF',
-            'alpha':'derivedF32 linear coverage, whiteRGBA; raw mapped prior preserved separately',
-            'frame_clock':'local0..64 = source75..139 by default; source index is ledger-authoritative',
-            'visual_approval':False}
-    save_json(root/'frame-ledger.json',ledger)
-    save_json(root/'completion.json',{'status':'ALL65_F32_TYPED_EXPORTS_COMPLETE_VISUAL_PENDING','files':260,'ledger_sha256':sha(root/'frame-ledger.json')})
-    return {'status':'COMPLETE_REQUIRES_TEMPORAL_VISUAL_QA','ledger':str(root/'frame-ledger.json')}
+    return rows
