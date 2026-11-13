@@ -1,0 +1,5 @@
+{
+  "1": {"class_type":"CLIPLoader","inputs":{"clip_name":"__TEXT_ENCODER__","type":"ltxv","device":"default"}},
+  "2": {"class_type":"CLIPTextEncode","inputs":{"clip":["1",0],"text":""}},
+  "3": {"class_type":"SaveConditioning","inputs":{"conditioning":["2",0],"filename_prefix":"__CONDITIONING_PREFIX__"}}
+}

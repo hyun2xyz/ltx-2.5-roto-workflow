@@ -1,0 +1,22 @@
+{
+  "ComfyUI": {
+    "source": "https://github.com/Comfy-Org/ComfyUI",
+    "commit": "71096d1af6c9d1c34fc42094ec4ec59768104786",
+    "required_core_nodes": ["UNETLoader","VAELoader","CLIPLoader","CLIPTextEncode","SaveConditioning","ConditioningLoader","GetImageSize","LTXVConditioning","EmptyLTXVLatentVideo","ManualSigmas","KSamplerSelect","VAEDecodeTiled","SaveImage","SaveImageAdvanced"],
+    "note": "Core SaveImageAdvanced must support EXR,32-bit float and flattened format.bit_depth/format.input_color_space keys. No private exporter node."
+  },
+  "ComfyUI-LTXVideo": {
+    "source": "https://github.com/Lightricks/ComfyUI-LTXVideo",
+    "commit": "61ee82b23b18b6d7665c665bef47dbc270215f7d",
+    "required_nodes": ["LTXICLoRALoaderModelOnly","LTXAddVideoICLoRAGuide","LTXVTiledFusionSampler"],
+    "note": "Matching streamed33 guide and temporal-only33 Fusion, full1920x1088 spatial tiles, CPU canvas."
+  },
+  "ComfyUI-VideoHelperSuite": {
+    "source": "https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite",
+    "commit": "4d907bee61e92c2e65af3bd6383a4e4d356126d1",
+    "required_nodes": ["VHS_LoadVideoPath"]
+  },
+  "private_custom_nodes_required": false,
+  "PyMatting": {"version":"1.1.16","source":"https://github.com/pymatting/pymatting","license":"MIT","license_url":"https://github.com/pymatting/pymatting/blob/master/LICENSE.md"},
+  "ViTMatte_implementation": {"source":"https://github.com/hustvl/ViTMatte","implementation_used":"Transformers VitMatteForImageMatting, standard installed dependency; no upstream code vendored","license":"Upstream research implementation MIT; checkpoint model-card terms recorded separately"}
+}

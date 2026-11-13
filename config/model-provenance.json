@@ -1,0 +1,59 @@
+{
+  "base": [
+    {
+      "repo": "Lightricks/LTX-2.5",
+      "file": "diffusion_models/ltx-2.5-22b-distilled-transformer-bf16.safetensors",
+      "commit": "49b093a39c19169a8a81721dcc541e07e945232f",
+      "size": 42018190584,
+      "sha256": "31eb3cad89b9e54e99dd3baf286f70825ac4f6c660a70d9184d895be76d7bff4"
+    },
+    {
+      "repo": "Lightricks/LTX-2.5",
+      "file": "text_encoders/gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
+      "commit": "49b093a39c19169a8a81721dcc541e07e945232f",
+      "size": 26263858182,
+      "sha256": "ef7243612fdae7a75cb4d5cee9433e81380675fb6c213bd98ae74a9cd16561d1"
+    },
+    {
+      "repo": "Lightricks/LTX-2.5",
+      "file": "vae/ltx-2.5-video-vae-bf16.safetensors",
+      "commit": "49b093a39c19169a8a81721dcc541e07e945232f",
+      "size": 1472223346,
+      "sha256": "847e14ca7f3355debca0cea4eaa24ac0fbcdf0061da054ac89ca638a869ddba3"
+    }
+  ],
+  "alpha_gen": {
+    "repo": "Lightricks/LTX-2.5-22b-IC-LoRA-Alpha-Gen",
+    "file": "ltx-2.5-22b-ic-lora-alpha-gen-0.9.safetensors",
+    "sha256": "d9e143f979e0756f0c83d772e6a8890f4c6b933db1f7d93fc06e25c179f3fd36",
+    "note": "Actual production0.9 file digest; upstream revision was not recorded, so digest is the pin. Model terms are separate from orchestration code."
+  },
+  "vitmatte": {
+    "repo": "hustvl/vitmatte-base-composition-1k",
+    "revision": "bf486d01a7d9e3dbcc8400f7942835caf0eaf76e",
+    "license": "HF model card apache-2.0; upstream original research code MIT (separate). No upstream code was downloaded/executed.",
+    "files": [
+      {
+        "name": "README.md",
+        "bytes": 1716,
+        "sha256": "5545af4bf41cc017cd1a75ff096d27ff4e6e6ea0bb41c9a272dd4072a0fefaaf"
+      },
+      {
+        "name": "config.json",
+        "bytes": 783,
+        "sha256": "67d70e8cbd850adfde5714af6e1b4078cd266b8867a362cdf6023f1f9e045634"
+      },
+      {
+        "name": "preprocessor_config.json",
+        "bytes": 284,
+        "sha256": "0db558038b96a3f5c97e46d4ec8966fcc479e9aa58a391bca60b5094a5f7fee0"
+      },
+      {
+        "name": "pytorch_model.bin",
+        "bytes": 386836309,
+        "sha256": "b2521bcc4b719fb24611c39605b6642162fd7502e69b3cc846506ca921757b41"
+      }
+    ]
+  },
+  "downloads": "No automatic model download or token handling in this repository. Obtain official files separately and verify these digests."
+}

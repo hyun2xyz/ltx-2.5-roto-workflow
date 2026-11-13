@@ -1,0 +1,41 @@
+{
+  "production_native_case": {
+    "AE": "26.5x89",
+    "profile": "4096x2160 /25fps /65frames",
+    "actual_native_EXRs": 100,
+    "clean_frames_A_and_original_F_times_A": 65,
+    "A_bit_exact_all65": true,
+    "A_max_error": 0.0,
+    "associated_RGB_bit_exact_all65": true,
+    "associated_RGB_max_error": 0.0,
+    "source_RGB8_and_opaqueF_native_sampling": [
+      0,
+      8,
+      16,
+      32,
+      64
+    ],
+    "temporal_visual": "PASS with all-frame contacts and selected1:1 patches; not a perfect-matte claim"
+  },
+  "portable_copy_checks": {
+    "Python_AST": "PASS",
+    "focused_checks": [
+      "valid_clock",
+      "reject_width",
+      "reject_height",
+      "reject_fps",
+      "reject_frame_count",
+      "reject_wrong_row_time",
+      "reject_nonfinite_row_time",
+      "tolerance_not_bitexact",
+      "reject_A_squared",
+      "native100_scope",
+      "relative_settings"
+    ],
+    "native_AE_reexecution": false,
+    "scope": "Path/config adaptation, copied numerical checks and unique-item queue; no fresh inference/render or original260-file recheck.",
+    "standalone_JSX_syntax": "PASS (compile only; no execution)",
+    "CLI_help": "PASS for prepare/input, queue/probe/collect, nativeV2",
+    "personal_machine_path_scan": "PASS: no fixed drive/user/harness paths in ae/ or docs/after-effects.md"
+  }
+}

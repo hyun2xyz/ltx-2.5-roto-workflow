@@ -1,0 +1,9 @@
+{
+  "delivery_root": "../outputs/ae",
+  "producer_root": "../outputs/producer",
+  "source_start_frame": 75,
+  "profile": "4096x2160_25fps_65frames",
+  "attempt": "review",
+  "output_template": "CREATE_YOUR_OWN_ZIP32_CODEVALUES_TEMPLATE",
+  "foreground_input_preserve_rgb_confirmed": false
+}

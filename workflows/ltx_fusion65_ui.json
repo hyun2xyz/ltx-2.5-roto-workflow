@@ -1,0 +1,926 @@
+{
+  "last_node_id": 21,
+  "last_link_id": 0,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "UNETLoader",
+      "pos": [
+        470,
+        0
+      ],
+      "size": [
+        350,
+        110.0
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            131387233776074
+          ]
+        }
+      ],
+      "properties": {},
+      "widgets_values": [
+        "__TRANSFORMER__",
+        "default"
+      ],
+      "title": "BF16 LTX 2.5 22B DISTILLED"
+    },
+    {
+      "id": 2,
+      "type": "LTXICLoRALoaderModelOnly",
+      "pos": [
+        470,
+        230
+      ],
+      "size": [
+        350,
+        130.0
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 131387233776074
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "links": [
+            4050410499491094
+          ]
+        },
+        {
+          "name": "latent_downscale_factor",
+          "type": "FLOAT",
+          "links": [
+            4186132031329954
+          ]
+        }
+      ],
+      "properties": {},
+      "widgets_values": [
+        "__LORA__",
+        1.0
+      ],
+      "title": "BF16 ALPHA GEN 0.9 x1"
+    },
+    {
+      "id": 4,
+      "type": "VAELoader",
+      "pos": [
+        470,
+        840
+      ],
+      "size": [
+        350,
+        86.0
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            3929597435727413,
+            399175872986929,
+            1099009488151150
+          ]
+        }
+      ],
+      "properties": {},
+      "widgets_values": [
+        "__VAE__"
+      ],
+      "title": "BF16 DIFFVAE"
+    },
+    {
+      "id": 5,
+      "type": "VHS_LoadVideoPath",
+      "pos": [
+        0,
+        180
+      ],
+      "size": [
+        350,
+        314.0
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "meta_batch",
+          "type": "VHS_BatchManager",
+          "link": null
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            239327103501414,
+            4471885879573512
+          ]
+        },
+        {
+          "name": "frame_count",
+          "type": "INT",
+          "links": []
+        },
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": []
+        },
+        {
+          "name": "video_info",
+          "type": "VHS_VIDEOINFO",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VHS_LoadVideoPath"
+      },
+      "widgets_values": {
+        "video": "__REFERENCE__",
+        "force_rate": 0,
+        "custom_width": 0,
+        "custom_height": 0,
+        "frame_load_cap": 65,
+        "skip_first_frames": 0,
+        "select_every_nth": 1,
+        "format": "None",
+        "choose video to upload": "image",
+        "videopreview": {
+          "hidden": false,
+          "paused": true,
+          "params": {
+            "filename": "__REFERENCE__",
+            "type": "path",
+            "format": "video/mp4",
+            "force_rate": 0,
+            "custom_width": 0,
+            "custom_height": 0,
+            "frame_load_cap": 65,
+            "skip_first_frames": 0,
+            "select_every_nth": 1
+          }
+        }
+      },
+      "title": "01 SOURCE F75-F139 / 65f / 25fps"
+    },
+    {
+      "id": 6,
+      "type": "GetImageSize",
+      "pos": [
+        870,
+        840
+      ],
+      "size": [
+        350,
+        102.0
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 239327103501414
+        }
+      ],
+      "outputs": [
+        {
+          "name": "width",
+          "type": "INT",
+          "links": [
+            2909103275634135
+          ]
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "links": [
+            4327137941831675
+          ]
+        },
+        {
+          "name": "batch_size",
+          "type": "INT",
+          "links": []
+        }
+      ],
+      "properties": {},
+      "widgets_values": [],
+      "title": "GetImageSize"
+    },
+    {
+      "id": 8,
+      "type": "ConditioningLoader",
+      "pos": [
+        870,
+        460
+      ],
+      "size": [
+        350,
+        86.0
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            3953309958586569,
+            608162115106610
+          ]
+        }
+      ],
+      "properties": {},
+      "widgets_values": [
+        "__CONDITIONING__"
+      ],
+      "title": "EMPTY PROMPT / BF16 GEMMA CACHE F32"
+    },
+    {
+      "id": 9,
+      "type": "LTXVConditioning",
+      "pos": [
+        1230,
+        460
+      ],
+      "size": [
+        350,
+        106.0
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 3953309958586569
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 608162115106610
+        }
+      ],
+      "outputs": [
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "links": [
+            3970754672113161
+          ]
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "links": [
+            149198295106118
+          ]
+        }
+      ],
+      "properties": {},
+      "widgets_values": [
+        25.0
+      ],
+      "title": "LTXVConditioning"
+    },
+    {
+      "id": 10,
+      "type": "EmptyLTXVLatentVideo",
+      "pos": [
+        1230,
+        840
+      ],
+      "size": [
+        350,
+        158.0
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "width",
+          "type": "INT",
+          "link": 2909103275634135,
+          "grow_id": 2909103275634135,
+          "widget": {
+            "name": "width"
+          }
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "link": 4327137941831675,
+          "grow_id": 4327137941831675,
+          "widget": {
+            "name": "height"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            2721466314813132
+          ]
+        }
+      ],
+      "properties": {},
+      "widgets_values": [
+        768,
+        512,
+        65,
+        1
+      ],
+      "title": "EmptyLTXVLatentVideo"
+    },
+    {
+      "id": 11,
+      "type": "LTXAddVideoICLoRAGuide",
+      "pos": [
+        1610,
+        430
+      ],
+      "size": [
+        350,
+        358.0
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 3970754672113161
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 149198295106118
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 3929597435727413
+        },
+        {
+          "name": "latent",
+          "type": "LATENT",
+          "link": 2721466314813132
+        },
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 4471885879573512
+        },
+        {
+          "name": "latent_downscale_factor",
+          "type": "FLOAT",
+          "link": 4186132031329954,
+          "grow_id": 4186132031329954,
+          "widget": {
+            "name": "latent_downscale_factor"
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "links": [
+            1789342781491641
+          ]
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "links": [
+            2391948856100058
+          ]
+        },
+        {
+          "name": "latent",
+          "type": "LATENT",
+          "links": [
+            1498919820625798
+          ]
+        }
+      ],
+      "properties": {},
+      "widgets_values": [
+        0,
+        1.0,
+        1.0,
+        "disabled",
+        false,
+        256,
+        64,
+        true,
+        33
+      ],
+      "title": "02 STREAMED 33f GUIDE / FULL SPATIAL"
+    },
+    {
+      "id": 13,
+      "type": "ManualSigmas",
+      "pos": [
+        1610,
+        80
+      ],
+      "size": [
+        350,
+        86.0
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "SIGMAS",
+          "type": "SIGMAS",
+          "links": [
+            3929008208998500
+          ]
+        }
+      ],
+      "properties": {},
+      "widgets_values": [
+        "1.0, 0.99375, 0.9875, 0.98125, 0.975, 0.909375, 0.725, 0.421875, 0.0"
+      ],
+      "title": "8 DISTILLED SIGMA STEPS"
+    },
+    {
+      "id": 14,
+      "type": "KSamplerSelect",
+      "pos": [
+        2010,
+        80
+      ],
+      "size": [
+        350,
+        86.0
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "SAMPLER",
+          "type": "SAMPLER",
+          "links": [
+            3260554991948654
+          ]
+        }
+      ],
+      "properties": {},
+      "widgets_values": [
+        "euler"
+      ],
+      "title": "EULER / NON-ANCESTRAL"
+    },
+    {
+      "id": 16,
+      "type": "LTXVTiledFusionSampler",
+      "pos": [
+        2400,
+        180
+      ],
+      "size": [
+        350,
+        422.0
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 4050410499491094
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 1789342781491641
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 2391948856100058
+        },
+        {
+          "name": "latents",
+          "type": "LATENT",
+          "link": 1498919820625798
+        },
+        {
+          "name": "sigmas",
+          "type": "SIGMAS",
+          "link": 3929008208998500
+        },
+        {
+          "name": "sampler",
+          "type": "SAMPLER",
+          "link": 3260554991948654
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 399175872986929
+        }
+      ],
+      "outputs": [
+        {
+          "name": "output",
+          "type": "LATENT",
+          "links": [
+            3858793326824133
+          ]
+        }
+      ],
+      "properties": {},
+      "widgets_values": [
+        42,
+        "fixed",
+        1.0,
+        1920,
+        1088,
+        0.5,
+        0.05,
+        1,
+        33,
+        "cpu"
+      ],
+      "title": "03 TEMPORAL-ONLY FUSION / 33f / CPU CANVAS"
+    },
+    {
+      "id": 18,
+      "type": "VAEDecodeTiled",
+      "pos": [
+        2860,
+        550
+      ],
+      "size": [
+        350,
+        178.0
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 3858793326824133
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 1099009488151150
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            1982910236088549,
+            3528975853950959
+          ]
+        }
+      ],
+      "properties": {},
+      "widgets_values": [
+        512,
+        64,
+        64,
+        8
+      ],
+      "title": "04 DIFFVAE DECODE 512+64"
+    },
+    {
+      "id": 19,
+      "type": "SaveImage",
+      "pos": [
+        3250,
+        300
+      ],
+      "size": [
+        350,
+        86.0
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 1982910236088549
+        }
+      ],
+      "outputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "links": []
+        }
+      ],
+      "properties": {},
+      "widgets_values": [
+        "__MATTE_PREFIX__"
+      ],
+      "title": "05 REVIEW MATTE PNG8"
+    },
+    {
+      "id": 21,
+      "type": "SaveImageAdvanced",
+      "pos": [
+        3250,
+        800
+      ],
+      "size": [
+        350,
+        158.0
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 3528975853950959
+        }
+      ],
+      "outputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "links": []
+        }
+      ],
+      "properties": {},
+      "widgets_values": [
+        "__FLOAT_PREFIX__",
+        "exr",
+        "32-bit float",
+        "linear"
+      ],
+      "title": "06 NATIVE FLOAT32 DATA EXR"
+    }
+  ],
+  "links": [
+    [
+      131387233776074,
+      1,
+      0,
+      2,
+      0,
+      "MODEL"
+    ],
+    [
+      239327103501414,
+      5,
+      0,
+      6,
+      0,
+      "IMAGE"
+    ],
+    [
+      3953309958586569,
+      8,
+      0,
+      9,
+      0,
+      "CONDITIONING"
+    ],
+    [
+      608162115106610,
+      8,
+      0,
+      9,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      2909103275634135,
+      6,
+      0,
+      10,
+      0,
+      "INT"
+    ],
+    [
+      4327137941831675,
+      6,
+      1,
+      10,
+      1,
+      "INT"
+    ],
+    [
+      3970754672113161,
+      9,
+      0,
+      11,
+      0,
+      "CONDITIONING"
+    ],
+    [
+      149198295106118,
+      9,
+      1,
+      11,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      3929597435727413,
+      4,
+      0,
+      11,
+      2,
+      "VAE"
+    ],
+    [
+      2721466314813132,
+      10,
+      0,
+      11,
+      3,
+      "LATENT"
+    ],
+    [
+      4471885879573512,
+      5,
+      0,
+      11,
+      4,
+      "IMAGE"
+    ],
+    [
+      4186132031329954,
+      2,
+      1,
+      11,
+      5,
+      "FLOAT"
+    ],
+    [
+      4050410499491094,
+      2,
+      0,
+      16,
+      0,
+      "MODEL"
+    ],
+    [
+      1789342781491641,
+      11,
+      0,
+      16,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      2391948856100058,
+      11,
+      1,
+      16,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      1498919820625798,
+      11,
+      2,
+      16,
+      3,
+      "LATENT"
+    ],
+    [
+      3929008208998500,
+      13,
+      0,
+      16,
+      4,
+      "SIGMAS"
+    ],
+    [
+      3260554991948654,
+      14,
+      0,
+      16,
+      5,
+      "SAMPLER"
+    ],
+    [
+      399175872986929,
+      4,
+      0,
+      16,
+      6,
+      "VAE"
+    ],
+    [
+      3858793326824133,
+      16,
+      0,
+      18,
+      0,
+      "LATENT"
+    ],
+    [
+      1099009488151150,
+      4,
+      0,
+      18,
+      1,
+      "VAE"
+    ],
+    [
+      1982910236088549,
+      18,
+      0,
+      19,
+      0,
+      "IMAGE"
+    ],
+    [
+      3528975853950959,
+      18,
+      0,
+      21,
+      0,
+      "IMAGE"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.4,
+      "offset": [
+        40,
+        120
+      ]
+    },
+    "ltx_bf16_provenance": {
+      "source_frames": [
+        75,
+        139
+      ],
+      "fps": "25/1",
+      "temporal_windows_pixel_starts": [
+        0,
+        16,
+        32
+      ],
+      "temporal_window_frames": 33,
+      "native_ui_api_must_match": "prompt_api.json",
+      "sampler_change": "Euler for fusion; 17/33 pilots used Euler ancestral. Same BF16 files and 8 sigmas, different sampling algorithm.",
+      "guide_sampler_spatial_tiling": false,
+      "vae_decode_spatial_tile": 512,
+      "never_submitted": true
+    }
+  },
+  "version": 0.4
+}

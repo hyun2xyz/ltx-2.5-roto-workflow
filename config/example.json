@@ -1,0 +1,19 @@
+{
+  "comfy_url": "http://127.0.0.1:8197",
+  "dedicated_owned_server": true,
+  "comfy_output": "../ComfyUI/output",
+  "vitmatte_model_dir": "../models/vitmatte-base-composition-1k",
+  "gpu_python": "python",
+  "cpu_python": "python",
+  "ffmpeg": "ffmpeg",
+  "ffprobe": "ffprobe",
+  "start_frame": 75,
+  "required_server_flags": ["--fast-disk", "--disable-pinned-memory", "--bf16-unet", "--bf16-vae", "--bf16-text-enc"],
+  "registered_models": {
+    "transformer": "ltx-2.5-22b-distilled-transformer-bf16.safetensors",
+    "vae": "ltx-2.5-video-vae-bf16.safetensors",
+    "lora": "ltx-2.5-22b-ic-lora-alpha-gen-0.9.safetensors",
+    "text_encoder": "gemma4-12b-with-proj-ltx-2.5-bf16.safetensors",
+    "conditioning": "empty_prompt_bf16_native.safetensors"
+  }
+}
