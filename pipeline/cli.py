@@ -32,7 +32,7 @@ def prepare(cfg, source, run):
     fhd = trim + 'scale=1920:1088:force_original_aspect_ratio=decrease:flags=lanczos' + color + ',pad=1920:1088:(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=rgb24'
     for folder, filt in [('source', native), ('source_fhd', fhd)]:
         command([cfg['ffmpeg'], '-v', 'error', '-n', '-i', source, '-map', '0:v:0', '-an', '-vf', filt,
-                 '-fps_mode', 'passthrough', run / 'assets' / folder / 'source_%05d.png'])
+                 '-frames:v', str(count), '-fps_mode', 'passthrough', run / 'assets' / folder / 'source_%05d.png'])
         if len(list((run / 'assets' / folder).glob('source_*.png'))) != count:
             raise ValueError('Requested source frames are missing; partial preparation preserved')
     reference = run / 'assets' / 'reference.mp4'
