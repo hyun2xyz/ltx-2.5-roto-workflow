@@ -1,0 +1,40 @@
+{
+  "source_start_frame": 75,
+  "grid": [4096, 2160],
+  "first_source_frame_sha256": "e6bca02144cb799f16228988e2e05b81e7c8357a10e31d26e12d426b5eefc8dd",
+  "rules": [
+    {
+      "type": "jacket-edge",
+      "frames": [56, 57],
+      "reference_frames": [55, 58],
+      "calibration_grid": [1080, 570],
+      "reference_encoding": "area-png8",
+      "edge_columns": [130, 335],
+      "first_row": 482,
+      "center_threshold": 127,
+      "width_thresholds": [26, 229],
+      "search_shifts": [-145, 117],
+      "wall_sample_shifts": [-130, -78],
+      "fabric_sample_shifts": [34, 61],
+      "crossing_shifts": [-35, 35],
+      "profile_kernel": [7, 9],
+      "profile_sigma": 2,
+      "center_blur_rows": 15,
+      "width_blur_rows": 19,
+      "logistic_span": 4.39445,
+      "minimum_sigma": 1,
+      "coverage_snap": 0.0001,
+      "vertical_ramp": 32,
+      "left_ramp_start": -144,
+      "left_ramp_width": 18,
+      "right_ramp_end": 115,
+      "right_ramp_width": 38,
+      "fabric_blur_rows": 9,
+      "texture_offset": 12,
+      "texture_ramp": 20,
+      "color_end": 65,
+      "color_ramp": 24,
+      "minimum_color_contrast_squared": 1e-8
+    }
+  ]
+}

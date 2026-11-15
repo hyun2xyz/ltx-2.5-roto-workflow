@@ -8,6 +8,20 @@ from pipeline.common import save_json, sha
 
 
 class ExportTests(unittest.TestCase):
+    def test_repair_clip_mismatch_leaves_no_partial_delivery(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            save_json(root / 'frame-ledger.json', {
+                'width': 4, 'height': 2, 'fps': 25, 'frame_count': 1,
+                'frames': [{'source_frame_index': 75, 'inputs': {'source': {'sha256': 'a' * 64}}}]})
+            recipe = root / 'recipe.json'
+            save_json(recipe, {'grid': [4, 2], 'source_start_frame': 75,
+                               'first_source_frame_sha256': 'b' * 64,
+                               'rules': [{'type': 'hair-sky', 'frames': [0, 0]}]})
+            with self.assertRaisesRegex(ValueError, 'different source clip'):
+                export_rgba(root, root / 'corrected', repairs=recipe)
+            self.assertFalse((root / 'corrected').exists())
+
     def test_straight_does_not_square_alpha_or_premultiply_RGB(self):
         f = {c: np.full((2,3), .8, np.float32) for c in 'RGB'}
         a = {c: np.ones((2,3), np.float32) for c in 'RGB'}

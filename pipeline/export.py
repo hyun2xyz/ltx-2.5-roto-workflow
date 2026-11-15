@@ -22,7 +22,24 @@ def straight_channels(foreground, matte):
     return {**{c: foreground[c] for c in 'RGB'}, 'A': alpha}
 
 
-def export_rgba(producer, output, kind='exr'):
+def export_rgba(producer, output, kind='exr', repairs=None):
+    from tempfile import TemporaryDirectory
+
+    output = Path(output).resolve()
+    if repairs is None:
+        return _export_sequence(producer, output, output, kind, None)
+    if output.exists():
+        raise FileExistsError(output)
+    recipe = read_json(repairs)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with TemporaryDirectory(prefix='.rgba-', dir=output.parent) as temporary:
+        staged = Path(temporary) / 'sequence'
+        result = _export_sequence(producer, staged, output, kind, recipe)
+        staged.rename(output)
+    return result
+
+
+def _export_sequence(producer, output, final, kind, recipe):
     import numpy as np
     if kind not in ('exr', 'png8'):
         raise ValueError('Choose EXR F32 master or PNG8 review')
@@ -32,7 +49,11 @@ def export_rgba(producer, output, kind='exr'):
     rows = ledger['frames']; fps = float(ledger['fps'])
     if not rows or len(rows) != ledger['frame_count'] or not math.isfinite(fps) or fps <= 0:
         raise ValueError('Invalid frame clock')
-    output = Path(output).resolve(); output.mkdir(parents=True, exist_ok=False)
+    correction = None
+    if recipe is not None:
+        from .repairs import ShotRepairs
+        correction = ShotRepairs(recipe, ledger, producer)
+    output.mkdir(parents=True, exist_ok=False)
     origin = rows[0]['source_frame_index']; result = []
     for local, row in enumerate(rows):
         if row['local_index'] != local or row['source_frame_index'] != origin+local:
@@ -48,6 +69,8 @@ def export_rgba(producer, output, kind='exr'):
         channels = straight_channels(planes['foreground'], planes['alpha'])
         if channels['A'].shape != (ledger['height'], ledger['width']):
             raise ValueError('Grid differs from ledger')
+        if correction is not None:
+            channels = correction.apply(local, channels)
         target = output/f'rgba_{local+1:05d}.{ "exr" if kind == "exr" else "png" }'
         if kind == 'exr':
             write_exr(target, channels, 'BT709-code-values')
@@ -60,7 +83,7 @@ def export_rgba(producer, output, kind='exr'):
                 if not np.array_equal(np.asarray(image), quantized):
                     raise ValueError('PNG review readback mismatch')
         result.append({'local_index': local, 'source_frame_index': origin+local,
-                       'time_seconds': local/fps, 'path': str(target), 'sha256': sha(target)})
+                       'time_seconds': local/fps, 'path': str(final/target.name), 'sha256': sha(target)})
     report = {'status': 'EXPORTED', 'format': kind, 'alpha_association': 'straight',
               'RGB': 'restored BT709 code values; no EOTF, no extra alpha multiplication',
               'precision': 'native FLOAT32, bit-exact write/readback' if kind == 'exr' else '8-bit clamped/rounded review; not F32 master',
@@ -68,6 +91,8 @@ def export_rgba(producer, output, kind='exr'):
               'frame_count': len(rows), 'duration_seconds': len(rows)/fps,
               'input_ledger_sha256': sha(ledger_path), 'frames': result,
               'AE_used': False, 'inference_started': False}
+    if recipe is not None:
+        report['repairs'] = recipe
     save_json(output/'export-receipt.json', report)
     return {'status': report['status'], 'frames': len(rows), 'format': kind,
-            'receipt': str(output/'export-receipt.json')}
+            'receipt': str(final/'export-receipt.json')}
